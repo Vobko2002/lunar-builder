@@ -1,0 +1,28 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Syntax-check inline game script
+        run: |
+          if [ -f lunar-builder.html ]; then
+            awk '/^<script>$/{f=1;next} /^<\/script>$/{f=0} f' lunar-builder.html > game.js
+            [ -s game.js ] || { echo "script extraction produced empty output"; exit 1; }
+            node --check game.js
+            echo "syntax OK ($(wc -l < game.js) lines)"
+          else
+            echo "lunar-builder.html not present on this ref; skipping"
+          fi
+      - name: Sanity markers
+        run: |
+          if [ -f lunar-builder.html ]; then
+            node -e "const s=require('fs').readFileSync('lunar-builder.html','utf8');const m=['runSelfTest','mulberry32','__lunarBuilder','drawShip'];const miss=m.filter(x=>!s.includes(x));if(miss.length){console.error('missing markers: '+miss.join(','));process.exit(1)}console.log('markers OK')"
+          fi
